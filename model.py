@@ -4,7 +4,7 @@ import pymysql.cursors
 import collections
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score,f1_score,precision_score,recall_score
 from sklearn.externals import joblib
 import pickle
 import random
@@ -20,8 +20,8 @@ connection = pymysql.connect(host='112.137.142.8',
                              charset='utf8',
                              cursorclass=pymysql.cursors.DictCursor)
 
-NUMBER_OF_TRAIN_DOCS = 600
-NUMBER_OF_TEST_DOCS = 200
+NUMBER_OF_TRAIN_DOCS = 1000
+NUMBER_OF_TEST_DOCS = 300
 NUMBER_OF_TERMS = 1500
 LANG = 'vi'
 
@@ -64,7 +64,7 @@ def make_dictionary(docs):
         all_words += words
 
     dictionary = collections.Counter(all_words)
-    list_to_remove = dictionary.keys()
+    list_to_remove = dictionary.copy().keys()
 
     for item in list_to_remove:
         # remove if numerical
@@ -146,15 +146,14 @@ def get_data(connection):
 
         return train_docs, test_docs
 
-
 def train():
     try:
 
-        print "Getting data..."
+        print ("Getting data...")
 
         train_docs, test_docs = get_data(connection)
 
-        print "Processing data..."
+        print ("Processing data...")
 
         dict = make_dictionary(train_docs)
 
@@ -164,10 +163,19 @@ def train():
         features_matrix = extract_features(train_docs, dict)
         labels = extract_labels(train_docs)
 
+        # with open('data_x.pkl', 'wb') as handle:
+        #     pickle.dump(features_matrix,handle,pickle.HIGHEST_PROTOCOL)
+        # with open('data_y.pkl', 'wb') as handle:
+        #     pickle.dump(labels,handle,pickle.HIGHEST_PROTOCOL)
+
         test_features_matrix = extract_features(test_docs, dict)
         test_labels = extract_labels(test_docs)
+        # with open('test_data_x.pkl', 'wb') as handle:
+        #     pickle.dump(test_features_matrix,handle,pickle.HIGHEST_PROTOCOL)
+        # with open('test_data_y.pkl', 'wb') as handle:
+        #     pickle.dump(test_labels,handle,pickle.HIGHEST_PROTOCOL)
 
-        print "Training model..."
+        print ("Training model...")
 
         model = GaussianNB()
 
@@ -176,13 +184,15 @@ def train():
 
         joblib.dump(model, LANG + '_model.pkl')
 
-        print "Testing..."
+        print ("Testing...")
 
         predicted_labels = model.predict(test_features_matrix)
 
-        print "FINISHED classifying. accuracy score : "
-        print accuracy_score(test_labels, predicted_labels)
-
+        print( "FINISHED classifying. accuracy score : ")
+        print("Acc : {} ".format(accuracy_score(test_labels,predicted_labels)))
+        print("Precision: {}".format(precision_score(test_labels,predicted_labels)))
+        print("Recall {}".format(recall_score(test_labels,predicted_labels)))
+        print("F1 {}".format(f1_score(test_labels,predicted_labels)))        
     finally:
         connection.close()
 
@@ -196,6 +206,6 @@ def predict(doc):
 
         label = clf.predict(feature_matrix)[0]
 
-        print label
+        print (label)
 
 
