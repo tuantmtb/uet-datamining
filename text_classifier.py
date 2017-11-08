@@ -20,14 +20,15 @@ connection = pymysql.connect(host='112.137.142.8',
 
 NUMBER_OF_TRAIN_DOCS = 600
 NUMBER_OF_TEST_DOCS = 200
-NUMBER_OF_TERMS = 1000
+NUMBER_OF_TERMS = 1000l
+LANG = 'vi'
 
 
 def get_content(doc):
     if doc['lang'] == 'vi':
         content = doc['tokenize']
     else:
-        content = doc['data']
+        content = doc['normalized']
 
     return content
 
@@ -107,15 +108,15 @@ def extract_features(docs, dictionary):
     return features_matrix, training_labels
 
 
-try:
+def get_data(connection):
     with connection.cursor() as cursor:
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s"
-        cursor.execute(sql, ('vi', NUMBER_OF_TRAIN_DOCS // 2))
+        cursor.execute(sql, (LANG, NUMBER_OF_TRAIN_DOCS // 2))
 
         train_spam_docs = cursor.fetchall()
 
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='NON-SPAM' LIMIT %s"
-        cursor.execute(sql, ('vi', NUMBER_OF_TRAIN_DOCS - len(train_spam_docs)))
+        cursor.execute(sql, (LANG, NUMBER_OF_TRAIN_DOCS - len(train_spam_docs)))
 
         train_ham_docs = cursor.fetchall()
 
@@ -123,34 +124,47 @@ try:
         random.shuffle(train_docs)
 
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s OFFSET %s"
-        cursor.execute(sql, ('vi', NUMBER_OF_TEST_DOCS // 2, len(train_spam_docs)))
+        cursor.execute(sql, (LANG, NUMBER_OF_TEST_DOCS // 2, len(train_spam_docs)))
 
         test_spam_docs = cursor.fetchall()
 
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='NON-SPAM' LIMIT %s OFFSET %s"
-        cursor.execute(sql, ('vi', NUMBER_OF_TEST_DOCS - len(test_spam_docs), len(train_ham_docs)))
+        cursor.execute(sql, (LANG, NUMBER_OF_TEST_DOCS - len(test_spam_docs), len(train_ham_docs)))
 
         test_ham_docs = cursor.fetchall()
 
         test_docs = np.concatenate((test_ham_docs, test_spam_docs), axis=0)
         random.shuffle(test_docs)
 
-        dict = make_dictionary(train_docs)
+        return train_docs, test_docs
 
-        features_matrix, labels = extract_features(train_docs, dict)
-        test_features_matrix, test_labels = extract_features(test_docs, dict)
 
-        model = RandomForestClassifier(n_estimators=3)
+try:
 
-        print "Trainning model."
+    print "Getting data..."
 
-        # train model
-        model.fit(features_matrix, labels)
+    train_docs, test_docs = get_data(connection)
 
-        predicted_labels = model.predict(test_features_matrix)
+    print "Processing data..."
 
-        print "FINISHED classifying. accuracy score : "
-        print accuracy_score(test_labels, predicted_labels)
+    dict = make_dictionary(train_docs)
+
+    features_matrix, labels = extract_features(train_docs, dict)
+    test_features_matrix, test_labels = extract_features(test_docs, dict)
+
+    print "Training model..."
+
+    model = RandomForestClassifier()
+
+    # train model
+    model.fit(features_matrix, labels)
+
+    print "Testing..."
+
+    predicted_labels = model.predict(test_features_matrix)
+
+    print "FINISHED classifying. accuracy score : "
+    print accuracy_score(test_labels, predicted_labels)
 
 finally:
     connection.close()
