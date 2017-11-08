@@ -8,9 +8,12 @@ from sklearn.metrics import accuracy_score
 from sklearn.externals import joblib
 import pickle
 import random
-
+import os
+import codecs
 import json
 import numpy as np
+
+np.set_printoptions(threshold=np.nan)
 
 connection = pymysql.connect(host='112.137.142.8',
                              user='root',
@@ -23,7 +26,7 @@ connection = pymysql.connect(host='112.137.142.8',
 NUMBER_OF_TRAIN_DOCS = 600
 NUMBER_OF_TEST_DOCS = 200
 NUMBER_OF_TERMS = 1500
-LANG = 'vi'
+LANG = 'en'
 
 
 def get_content(doc):
@@ -148,50 +151,46 @@ def get_data(connection):
 
 
 def train():
-    try:
+    print "Getting data..."
 
-        print "Getting data..."
+    train_docs, test_docs = get_data(connection)
 
-        train_docs, test_docs = get_data(connection)
+    print "Processing data..."
 
-        print "Processing data..."
+    dict = make_dictionary(train_docs)
 
-        dict = make_dictionary(train_docs)
+    with open(LANG + '_dict.pkl', 'wb') as handle:
+        pickle.dump(dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        with open('dict.pkl', 'wb') as handle:
-            pickle.dump(dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    features_matrix = extract_features(train_docs, dict)
+    labels = extract_labels(train_docs)
 
-        features_matrix = extract_features(train_docs, dict)
-        labels = extract_labels(train_docs)
+    test_features_matrix = extract_features(test_docs, dict)
+    test_labels = extract_labels(test_docs)
 
-        test_features_matrix = extract_features(test_docs, dict)
-        test_labels = extract_labels(test_docs)
+    print "Training model..."
 
-        print "Training model..."
+    model = GaussianNB()
 
-        model = GaussianNB()
+    # train model
+    model.fit(features_matrix, labels)
 
-        # train model
-        model.fit(features_matrix, labels)
+    joblib.dump(model, LANG + '_model.pkl')
 
-        joblib.dump(model, LANG + '_model.pkl')
+    print "Testing..."
 
-        print "Testing..."
+    predicted_labels = model.predict(test_features_matrix)
 
-        predicted_labels = model.predict(test_features_matrix)
-
-        print "FINISHED classifying. accuracy score : "
-        print accuracy_score(test_labels, predicted_labels)
-
-    finally:
-        connection.close()
+    print "FINISHED classifying. accuracy score : "
+    print accuracy_score(test_labels, predicted_labels)
 
 
 def predict(doc):
     clf = joblib.load(LANG + '_model.pkl')
 
-    with open('dict.pkl', 'rb') as handle:
+    with open(LANG + '_dict.pkl', 'rb') as handle:
         dict = pickle.load(handle)
+
         feature_matrix = extract_features([doc], dict)
 
         label = clf.predict(feature_matrix)

@@ -12,6 +12,7 @@ def predict():
     doc = {}
     doc['lang'] = request.form['lang']
     doc['tokenize'] = text
+    doc['normalized'] = text
 
     result = model.predict(doc)
 
