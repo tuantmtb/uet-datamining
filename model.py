@@ -188,14 +188,12 @@ def train():
 
 
 def predict(doc):
-    clf = joblib.load('filename.pkl')
+    clf = joblib.load(LANG + '_model.pkl')
 
     with open('dict.pkl', 'rb') as handle:
         dict = pickle.load(handle)
         feature_matrix = extract_features([doc], dict)
 
-        label = clf.predict(feature_matrix)[0]
+        label = clf.predict(feature_matrix)
 
-        print label
-
-
+        return label[0]
