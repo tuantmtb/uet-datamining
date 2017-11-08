@@ -5,6 +5,7 @@ import collections
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+import random
 
 import json
 import numpy as np
@@ -17,8 +18,8 @@ connection = pymysql.connect(host='112.137.142.8',
                              charset='utf8',
                              cursorclass=pymysql.cursors.DictCursor)
 
-NUMBER_OF_TRAIN_DOCS = 1000
-NUMBER_OF_TEST_DOCS = 333
+NUMBER_OF_TRAIN_DOCS = 600
+NUMBER_OF_TEST_DOCS = 200
 NUMBER_OF_TERMS = 1000
 
 
@@ -108,38 +109,38 @@ def extract_features(docs, dictionary):
 
 try:
     with connection.cursor() as cursor:
-        sql = "SELECT * FROM `extracted` WHERE `lang`=%s LIMIT %s"
-        cursor.execute(sql, ('vi', NUMBER_OF_TRAIN_DOCS))
+        sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s"
+        cursor.execute(sql, ('vi', NUMBER_OF_TRAIN_DOCS // 2))
 
-        train_docs = cursor.fetchall()
+        train_spam_docs = cursor.fetchall()
 
-        sql = "SELECT * FROM `extracted` WHERE `lang`=%s LIMIT %s OFFSET %s"
-        cursor.execute(sql, ('vi', NUMBER_OF_TEST_DOCS, NUMBER_OF_TRAIN_DOCS))
+        sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='NON-SPAM' LIMIT %s"
+        cursor.execute(sql, ('vi', NUMBER_OF_TRAIN_DOCS - len(train_spam_docs)))
 
-        test_docs = cursor.fetchall()
+        train_ham_docs = cursor.fetchall()
 
-        # docs = [
-        #     {
-        #         'lang': 'vi',
-        #         'tokenize': 'Tf- term frequency : dùng để ước lượng tần xuất xuất hiện của từ trong văn bản. Tuy nhiên với mỗi văn bản thì có độ dài khác nhau, vì thế số lần xuất hiện của từ có thể nhiều hơn . Vì vậy số lần xuất hiện của từ sẽ được chia độ dài của văn bản (tổng số từ trong văn bản đó)'
-        #     },
-        #     {
-        #         'lang': 'vi',
-        #         'tokenize': 'IDF- Inverse Document Frequency: dùng để ước lượng mức độ quan trọng của từ đó như thế nào . Khi tính tần số xuất hiện tf thì các từ đều được coi là quan trọng như nhau. Tuy nhiên có một số từ thường được được sử dụng nhiều nhưng không quan trọng để thể hiện ý nghĩa của đoạn văn , ví dụ :'
-        #     }
-        # ]
+        train_docs = np.concatenate((train_spam_docs, train_ham_docs), axis=0)
+        random.shuffle(train_docs)
+
+        sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s OFFSET %s"
+        cursor.execute(sql, ('vi', NUMBER_OF_TEST_DOCS // 2, len(train_spam_docs)))
+
+        test_spam_docs = cursor.fetchall()
+
+        sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='NON-SPAM' LIMIT %s OFFSET %s"
+        cursor.execute(sql, ('vi', NUMBER_OF_TEST_DOCS - len(test_spam_docs), len(train_ham_docs)))
+
+        test_ham_docs = cursor.fetchall()
+
+        test_docs = np.concatenate((test_ham_docs, test_spam_docs), axis=0)
+        random.shuffle(test_docs)
 
         dict = make_dictionary(train_docs)
-
-        print dict
 
         features_matrix, labels = extract_features(train_docs, dict)
         test_features_matrix, test_labels = extract_features(test_docs, dict)
 
-        model = RandomForestClassifier(n_estimators=30)
-
-        print features_matrix.shape
-        print labels.shape
+        model = RandomForestClassifier(n_estimators=3)
 
         print "Trainning model."
 
