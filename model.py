@@ -5,6 +5,8 @@ import collections
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.externals import joblib
+import pickle
 import random
 
 import json
@@ -20,7 +22,7 @@ connection = pymysql.connect(host='112.137.142.8',
 
 NUMBER_OF_TRAIN_DOCS = 600
 NUMBER_OF_TEST_DOCS = 200
-NUMBER_OF_TERMS = 1000l
+NUMBER_OF_TERMS = 1500
 LANG = 'vi'
 
 
@@ -85,18 +87,12 @@ def calculate_tf_idf(word, words, ndocs, idf_dict):
 
 def extract_features(docs, dictionary):
     features_matrix = np.zeros((len(docs), NUMBER_OF_TERMS))
-    training_labels = np.zeros(len(docs))
 
     idf_dict = get_idf_dictionary(docs, dictionary)
 
     for docId, doc in enumerate(docs):
         content = get_content(doc)
         words = content.split()
-
-        if doc['label'] == 'SPAM':
-            training_labels[docId] = 1
-        else:
-            training_labels[docId] = 0
 
         for word in words:
             for termId, d in enumerate(dictionary):
@@ -105,7 +101,19 @@ def extract_features(docs, dictionary):
 
                     features_matrix[docId, termId] = tf_idf
 
-    return features_matrix, training_labels
+    return features_matrix
+
+
+def extract_labels(docs):
+    training_labels = np.zeros(len(docs))
+
+    for docId, doc in enumerate(docs):
+        if doc['label'] == 'SPAM':
+            training_labels[docId] = 1
+        else:
+            training_labels[docId] = 0
+
+    return training_labels
 
 
 def get_data(connection):
@@ -139,32 +147,55 @@ def get_data(connection):
         return train_docs, test_docs
 
 
-try:
+def train():
+    try:
 
-    print "Getting data..."
+        print "Getting data..."
 
-    train_docs, test_docs = get_data(connection)
+        train_docs, test_docs = get_data(connection)
 
-    print "Processing data..."
+        print "Processing data..."
 
-    dict = make_dictionary(train_docs)
+        dict = make_dictionary(train_docs)
 
-    features_matrix, labels = extract_features(train_docs, dict)
-    test_features_matrix, test_labels = extract_features(test_docs, dict)
+        with open('dict.pkl', 'wb') as handle:
+            pickle.dump(dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    print "Training model..."
+        features_matrix = extract_features(train_docs, dict)
+        labels = extract_labels(train_docs)
 
-    model = RandomForestClassifier()
+        test_features_matrix = extract_features(test_docs, dict)
+        test_labels = extract_labels(test_docs)
 
-    # train model
-    model.fit(features_matrix, labels)
+        print "Training model..."
 
-    print "Testing..."
+        model = GaussianNB()
 
-    predicted_labels = model.predict(test_features_matrix)
+        # train model
+        model.fit(features_matrix, labels)
 
-    print "FINISHED classifying. accuracy score : "
-    print accuracy_score(test_labels, predicted_labels)
+        joblib.dump(model, LANG + '_model.pkl')
 
-finally:
-    connection.close()
+        print "Testing..."
+
+        predicted_labels = model.predict(test_features_matrix)
+
+        print "FINISHED classifying. accuracy score : "
+        print accuracy_score(test_labels, predicted_labels)
+
+    finally:
+        connection.close()
+
+
+def predict(doc):
+    clf = joblib.load('filename.pkl')
+
+    with open('dict.pkl', 'rb') as handle:
+        dict = pickle.load(handle)
+        feature_matrix = extract_features([doc], dict)
+
+        label = clf.predict(feature_matrix)[0]
+
+        print label
+
+
