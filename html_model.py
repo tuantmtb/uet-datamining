@@ -2,8 +2,8 @@
 from __future__ import division
 import pymysql.cursors
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.externals import joblib
 import model_helpers
@@ -23,23 +23,22 @@ def train():
 
         print("Getting data...")
 
-        train_docs, test_docs = model_helpers.get_data_by_language(connection, LANG, NUMBER_OF_TRAIN_DOCS,
-                                                                   NUMBER_OF_TEST_DOCS)
+        train_docs, test_docs = model_helpers.get_data(connection, NUMBER_OF_TRAIN_DOCS,
+                                                       NUMBER_OF_TEST_DOCS)
 
         print("Processing data...")
 
-        model_helpers.train_tf_idf(train_docs + test_docs, NUMBER_OF_TERMS, LANG)
-        features_matrix, labels = model_helpers.extract_features_by_tf_idf(train_docs, LANG)
-        test_features_matrix, test_labels = model_helpers.extract_features_by_tf_idf(test_docs, LANG)
+        features_matrix, labels = model_helpers.extract_features_by_html(train_docs)
+        test_features_matrix, test_labels = model_helpers.extract_features_by_html(test_docs)
 
         print("Training model...")
 
-        model = DecisionTreeClassifier()
+        model = KNeighborsClassifier(n_neighbors=5)
 
         # train model
         model.fit(features_matrix, labels)
 
-        joblib.dump(model, "model-data/" + LANG + '_model.pkl')
+        joblib.dump(model, "model-data/html_model.pkl")
 
         print("Testing...")
 
@@ -55,9 +54,9 @@ def train():
 
 
 def predict(doc):
-    clf = joblib.load("model-data/" + doc['lang'] + '_model.pkl')
+    clf = joblib.load("model-data/html_model.pkl")
 
-    feature_matrix, _ = model_helpers.extract_features_by_tf_idf([doc], doc['lang'])
+    feature_matrix, _ = model_helpers.extract_features_by_html([doc])
 
     label = clf.predict(feature_matrix)[0]
 

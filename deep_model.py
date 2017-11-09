@@ -58,8 +58,8 @@ def check_model(model, x, y, epochs=4):
 
 
 def main():
-    train_docs, test_docs = model_helpers.get_data(connection, LANG, NUMBER_OF_TRAIN_DOCS, NUMBER_OF_TEST_DOCS)
-    X_train, Y_train, X_test, Y_test = model_helpers.extract_data(train_docs, test_docs, NUMBER_OF_TERMS)
+    train_docs, test_docs = model_helpers.get_data_by_language(connection, LANG, NUMBER_OF_TRAIN_DOCS, NUMBER_OF_TEST_DOCS)
+    X_train, Y_train, X_test, Y_test = model_helpers.extract_features_by_tf_idf(train_docs, test_docs, NUMBER_OF_TERMS)
 
     model = SVC()
 
