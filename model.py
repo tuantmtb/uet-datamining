@@ -37,7 +37,7 @@ def train():
         # train model
         model.fit(features_matrix, labels)
 
-        joblib.dump(model, LANG + '_model.pkl')
+        joblib.dump(model, "model-data/" + LANG + '_model.pkl')
 
         print("Testing...")
 
@@ -53,7 +53,7 @@ def train():
 
 
 def predict(doc):
-    clf = joblib.load(doc['lang'] + '_model.pkl')
+    clf = joblib.load("model-data/" + doc['lang'] + '_model.pkl')
 
     feature_matrix, _ = model_helpers.extract_data([doc], doc['lang'])
 

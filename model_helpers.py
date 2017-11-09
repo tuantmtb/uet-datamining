@@ -33,7 +33,7 @@ def get_data(connection, lang, number_of_train_docs, number_of_test_docs):
 
 
 def extract_data(docs, lang):
-    tok = joblib.load(lang + "_tok.pkl")
+    tok = joblib.load("model-data/" + lang + "_tok.pkl")
     contents = [doc['tokenize'] for doc in docs]
 
     targets = [doc['label'] for doc in docs]
@@ -56,4 +56,4 @@ def train_tf_idf(train_docs, number_of_terms, lang):
 
     tok.fit(train_contents)
 
-    joblib.dump(tok, lang + '_tok.pkl')
+    joblib.dump(tok, "model-data/" + lang + '_tok.pkl')
