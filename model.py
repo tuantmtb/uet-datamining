@@ -8,11 +8,11 @@ from sklearn.externals import joblib
 import model_helpers
 from config import *
 
-connection = pymysql.connect(host='112.137.142.8',
-                             user='root',
-                             password='dhqghn',
-                             db='gmail',
-                             port=5306,
+connection = pymysql.connect(host=DB_HOST,
+                             user=DB_USER,
+                             password=DB_PASSWORD,
+                             db=DB_NAME,
+                             port=DB_PORT,
                              charset='utf8',
                              cursorclass=pymysql.cursors.DictCursor)
 

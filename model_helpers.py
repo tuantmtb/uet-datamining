@@ -3,23 +3,25 @@ import numpy as np
 from sklearn.externals import joblib
 
 
-def get_data(connection, LANG, NUMBER_OF_TRAIN_DOCS, NUMBER_OF_TEST_DOCS):
+def get_data(connection, lang, number_of_train_docs, number_of_test_docs):
     with connection.cursor() as cursor:
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s"
-        cursor.execute(sql, (LANG, NUMBER_OF_TRAIN_DOCS // 2))
+        cursor.execute(sql, (lang, number_of_train_docs // 2))
 
         train_spam_docs = cursor.fetchall()
+
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='NON-SPAM' LIMIT %s"
-        cursor.execute(sql, (LANG, NUMBER_OF_TRAIN_DOCS - len(train_spam_docs)))
+        cursor.execute(sql, (lang, number_of_train_docs - len(train_spam_docs)))
 
         train_ham_docs = cursor.fetchall()
 
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s OFFSET %s"
-        cursor.execute(sql, (LANG, NUMBER_OF_TEST_DOCS // 2, len(train_spam_docs)))
+        cursor.execute(sql, (lang, number_of_test_docs // 2, len(train_spam_docs)))
 
         test_spam_docs = cursor.fetchall()
+
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='NON-SPAM' LIMIT %s OFFSET %s"
-        cursor.execute(sql, (LANG, NUMBER_OF_TEST_DOCS - len(test_spam_docs), len(train_ham_docs)))
+        cursor.execute(sql, (lang, number_of_test_docs - len(test_spam_docs), len(train_ham_docs)))
 
         test_ham_docs = cursor.fetchall()
 
