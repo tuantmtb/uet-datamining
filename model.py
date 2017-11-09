@@ -26,7 +26,6 @@ connection = pymysql.connect(host='112.137.142.8',
 NUMBER_OF_TRAIN_DOCS = 600
 NUMBER_OF_TEST_DOCS = 200
 NUMBER_OF_TERMS = 1500
-LANG = 'en'
 
 
 def get_content(doc):
@@ -119,7 +118,7 @@ def extract_labels(docs):
     return training_labels
 
 
-def get_data(connection):
+def get_data(connection, LANG):
     with connection.cursor() as cursor:
         sql = "SELECT * FROM `extracted` WHERE `lang`=%s AND `label`='SPAM' LIMIT %s"
         cursor.execute(sql, (LANG, NUMBER_OF_TRAIN_DOCS // 2))
@@ -150,10 +149,10 @@ def get_data(connection):
         return train_docs, test_docs
 
 
-def train():
+def train(LANG):
     print "Getting data..."
 
-    train_docs, test_docs = get_data(connection)
+    train_docs, test_docs = get_data(connection, LANG)
 
     print "Processing data..."
 
@@ -186,13 +185,22 @@ def train():
 
 
 def predict(doc):
-    clf = joblib.load(LANG + '_model.pkl')
+    clf = joblib.load(doc['lang'] + '_model.pkl')
 
-    with open(LANG + '_dict.pkl', 'rb') as handle:
+    with open(doc['lang'] + '_dict.pkl', 'rb') as handle:
         dict = pickle.load(handle)
 
         feature_matrix = extract_features([doc], dict)
 
         label = clf.predict(feature_matrix)
+
+        # print doc['tokenize'].split()
+        # print"================="
+        # print"================="
+        # print"================="
+        # print"================="
+        # print dict
+
+        print feature_matrix
 
         return label[0]

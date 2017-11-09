@@ -1,5 +1,6 @@
 from flask import Flask
 from flask import request
+import json
 import model
 
 app = Flask(__name__)
@@ -7,10 +8,12 @@ app = Flask(__name__)
 
 @app.route("/predict", methods=['POST'])
 def predict():
-    text = request.form['text']
+    input = request.get_json(force=True)
+
+    text = input['text']
 
     doc = {}
-    doc['lang'] = request.form['lang']
+    doc['lang'] = input['lang']
     doc['tokenize'] = text
     doc['normalized'] = text
 
