@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import pymysql.cursors
-import collections
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.externals import joblib
-import pickle
 import model_helpers
-
-import json
-import numpy as np
+from config import *
 
 connection = pymysql.connect(host='112.137.142.8',
                              user='root',
@@ -19,11 +15,6 @@ connection = pymysql.connect(host='112.137.142.8',
                              port=5306,
                              charset='utf8',
                              cursorclass=pymysql.cursors.DictCursor)
-
-NUMBER_OF_TRAIN_DOCS = 1000
-NUMBER_OF_TEST_DOCS = 300
-NUMBER_OF_TERMS = 1500
-LANG = 'vi'
 
 
 def train():
@@ -35,7 +26,7 @@ def train():
 
         print("Processing data...")
 
-        model_helpers.train_tf_idf(train_docs, NUMBER_OF_TERMS, LANG)
+        model_helpers.train_tf_idf(train_docs + test_docs, NUMBER_OF_TERMS, LANG)
         features_matrix, labels = model_helpers.extract_data(train_docs, LANG)
         test_features_matrix, test_labels = model_helpers.extract_data(test_docs, LANG)
 
@@ -62,15 +53,13 @@ def train():
 
 
 def predict(doc):
-    clf = joblib.load('filename.pkl')
+    clf = joblib.load(doc['lang'] + '_model.pkl')
 
-    with open('dict.pkl', 'rb') as handle:
-        dict = pickle.load(handle)
-        feature_matrix = ([doc], dict)
+    feature_matrix, _ = model_helpers.extract_data([doc], doc['lang'])
 
-        label = clf.predict(feature_matrix)[0]
+    label = clf.predict(feature_matrix)[0]
 
-        print(label)
+    return label
 
 
 if __name__ == "__main__":
