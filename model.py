@@ -4,10 +4,13 @@ import pymysql.cursors
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.externals import joblib
 import model_helpers
 from config import *
+import time
 
 connection = pymysql.connect(host=DB_HOST,
                              user=DB_USER,
@@ -26,6 +29,8 @@ def train():
         train_docs, test_docs = model_helpers.get_data_by_language(connection, LANG, NUMBER_OF_TRAIN_DOCS,
                                                                    NUMBER_OF_TEST_DOCS)
 
+        start = time.time()
+
         print("Processing data...")
 
         model_helpers.train_tf_idf(train_docs + test_docs, NUMBER_OF_TERMS, LANG)
@@ -34,12 +39,16 @@ def train():
 
         print("Training model...")
 
-        model = DecisionTreeClassifier()
+        model = KNeighborsClassifier(n_neighbors=3)
 
         # train model
         model.fit(features_matrix, labels)
 
         joblib.dump(model, "model-data/" + LANG + '_model.pkl')
+
+        end = time.time()
+
+        print("time: {}".format(end - start))
 
         print("Testing...")
 
