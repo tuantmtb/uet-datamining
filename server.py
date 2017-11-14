@@ -2,6 +2,7 @@ from flask import Flask
 from flask import request
 import model as model
 
+
 app = Flask(__name__)
 
 
@@ -23,3 +24,6 @@ def predict():
         return 'SPAM'
     else:
         return 'NON-SPAM'
+
+if __name__ == "__main__":
+    app.run()
