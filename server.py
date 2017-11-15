@@ -23,3 +23,7 @@ def predict():
         return 'SPAM'
     else:
         return 'NON-SPAM'
+
+
+if __name__ == '__main__':
+    app.run()

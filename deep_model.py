@@ -58,17 +58,20 @@ def check_model(model, x, y, epochs=4):
 
 
 def main():
-    train_docs, test_docs = model_helpers.get_data_by_language(connection, LANG, NUMBER_OF_TRAIN_DOCS, NUMBER_OF_TEST_DOCS)
-    X_train, Y_train, X_test, Y_test = model_helpers.extract_features_by_tf_idf(train_docs, test_docs, NUMBER_OF_TERMS)
+    train_docs, test_docs = model_helpers.get_data_by_language(connection, LANG, NUMBER_OF_TRAIN_DOCS,
+                                                               NUMBER_OF_TEST_DOCS)
 
-    model = SVC()
+    model_helpers.train_tf_idf(train_docs + test_docs, NUMBER_OF_TERMS, LANG)
+
+    X_train, Y_train = model_helpers.extract_features_by_tf_idf(train_docs, LANG)
+    X_test, Y_test = model_helpers.extract_features_by_tf_idf(test_docs, LANG)
 
     # train model
-    model.fit(X_train, Y_train)
-    # model = build_model()
-    # his = check_model(model,X_train,Y_train,50)
-    Y_pred = model.predict(X_test)
-    # Y_pred = model.predict_classes(X_test).reshape(-1)
+
+    model = build_model()
+    his = check_model(model, X_train, Y_train, 50)
+    Y_pred = model.predict_classes(X_test).reshape(-1)
+
     print(Y_pred)
     print(Y_test)
     print("Acc : {} ".format(accuracy_score(Y_test, Y_pred)))

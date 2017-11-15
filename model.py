@@ -39,7 +39,7 @@ def train():
 
         print("Training model...")
 
-        model = KNeighborsClassifier(n_neighbors=3)
+        model = KNeighborsClassifier(n_neighbors=15)
 
         # train model
         model.fit(features_matrix, labels)
