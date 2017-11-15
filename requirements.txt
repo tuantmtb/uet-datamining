@@ -1,3 +1,8 @@
 sklearn
 flask
 pymysql
+
+deep_model : tensorflow keras h5py 
+pip install tensorflow 
+pip install keras
+pip install h5py

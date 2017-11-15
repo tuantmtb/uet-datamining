@@ -1,18 +1,15 @@
 import pymysql
 from keras.models import Model, Sequential
-from keras.layers import Dense, Dropout, Activation
-from keras.preprocessing.text import Tokenizer
-from keras.optimizers import SGD, Adam
+from keras.layers import Dense, Dropout, Activation,BatchNormalization
+from keras.optimizers import RMSprop
 from keras.callbacks import ModelCheckpoint, TensorBoard
 import keras
 import numpy as np
 import pickle
 import random
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC, SVR
-from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
-from sklearn.feature_extraction.text import TfidfVectorizer
 import model_helpers
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from config import *
 
 connection = pymysql.connect(host='112.137.142.8',
                              user='root',
@@ -22,64 +19,67 @@ connection = pymysql.connect(host='112.137.142.8',
                              charset='utf8',
                              cursorclass=pymysql.cursors.DictCursor)
 
-NUMBER_OF_TRAIN_DOCS = 1000
-NUMBER_OF_TEST_DOCS = 300
-NUMBER_OF_TERMS = 1500
-LANG = 'vi'
-model_save_path = "spam_model.h5"
-
+model_save_path = "model-data/" + LANG + "_spam_model.h5"
 
 def build_model():
     model = Sequential()
-    model.add(Dense(512, activation='relu', input_shape=(NUMBER_OF_TERMS,)))
-    model.add(Dropout(0.5))
-    model.add(Dense(256, activation='relu'))
-    model.add(Dropout(0.5))
+    model.add(Dense(128,activation='relu', input_shape=(NUMBER_OF_TERMS,)))
+    model.add(BatchNormalization())
+    model.add(Dense(64, activation='relu'))
+    model.add(BatchNormalization())
 
     model.add(Dense(1, activation='sigmoid'))
     model.summary()
-    optimizer = Adam(lr=1e-4)
+    optimizer = RMSprop(lr=1e-4)
     model.compile(loss='binary_crossentropy',
-                  optimizer=optimizer,
-                  metrics=['acc'])
+              optimizer=optimizer,
+              metrics=['acc'])
     print('compile done')
     return model
 
-
-def check_model(model, x, y, epochs=4):
+def fit_model(model,x,y,epochs=4):
     checkpointer = ModelCheckpoint(filepath=model_save_path,
-                                   verbose=1,
-                                   save_best_only=True)
+                                    verbose=1,
+                                    save_best_only=True)    
 
-    history = model.fit(x, y, batch_size=32, epochs=epochs, verbose=1, shuffle=True, validation_split=0.25,
-                        callbacks=[checkpointer]).history
-
+    history = model.fit(x,y,batch_size=64,epochs=epochs,verbose=1,shuffle=True, validation_split=0.01,
+              callbacks=[checkpointer]).history
+              
     return history
 
 
-def main():
+def train():
     train_docs, test_docs = model_helpers.get_data_by_language(connection, LANG, NUMBER_OF_TRAIN_DOCS,
-                                                               NUMBER_OF_TEST_DOCS)
+                                                                NUMBER_OF_TEST_DOCS)
+
+    start = time.time()
+
+    print("Processing data...")
 
     model_helpers.train_tf_idf(train_docs + test_docs, NUMBER_OF_TERMS, LANG)
-
-    X_train, Y_train = model_helpers.extract_features_by_tf_idf(train_docs, LANG)
-    X_test, Y_test = model_helpers.extract_features_by_tf_idf(test_docs, LANG)
-
-    # train model
+    features_matrix, labels = model_helpers.extract_features_by_tf_idf(train_docs, LANG)
+    test_features_matrix, test_labels = model_helpers.extract_features_by_tf_idf(test_docs, LANG)
 
     model = build_model()
-    his = check_model(model, X_train, Y_train, 50)
-    Y_pred = model.predict_classes(X_test).reshape(-1)
 
-    print(Y_pred)
-    print(Y_test)
-    print("Acc : {} ".format(accuracy_score(Y_test, Y_pred)))
-    print("Precision: {}".format(precision_score(Y_test, Y_pred)))
-    print("Recall {}".format(recall_score(Y_test, Y_pred)))
-    print("F1 {}".format(f1_score(Y_test, Y_pred)))
+    # train model
+    fit_model(model,features_matrix, labels)
+    print("end {}".format(time.time()-start))
+    predicted_labels = model.predict_classes(test_features_matrix).reshape(-1)
+
+    print("Acc : {} ".format(accuracy_score(test_labels, predicted_labels)))
+    print("Precision: {}".format(precision_score(test_labels, predicted_labels)))
+    print("Recall {}".format(recall_score(test_labels, predicted_labels)))
+    print("F1 {}".format(f1_score(test_labels, predicted_labels)))
     connection.close()
 
+def predict(doc):
+    model = build_model()
+    model.load_weights("model-data/"+ doc['lang'] + "_spam_model.h5")
+    feature_matrix, _ = model_helpers.extract_features_by_tf_idf([doc], doc['lang'])
+
+    label = model.predict_classes(feature_matrix).tolist()[0]
+    return label
 
 if __name__ == "__main__":
-    main()
+    train()

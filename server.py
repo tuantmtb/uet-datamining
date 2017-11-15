@@ -1,6 +1,8 @@
 from flask import Flask
 from flask import request
+# import deep_model as model
 import model as model
+
 
 app = Flask(__name__)
 
@@ -24,6 +26,5 @@ def predict():
     else:
         return 'NON-SPAM'
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()
